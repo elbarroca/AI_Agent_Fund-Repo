@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import requests
+import time
 
 from data.cache import get_cache
 from data.models import (
@@ -96,32 +97,47 @@ def search_line_items(
     period: str = "ttm",
     limit: int = 10,
 ) -> list[LineItem]:
-    """Fetch line items from API."""
-    # If not in cache or insufficient data, fetch from API
-    headers = {}
-    if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
-        headers["X-API-KEY"] = api_key
+    """Search financial line items with retry and delay."""
+    max_retries = 3
+    delay_seconds = 1.5  # Delay between retries
+    
+    for attempt in range(max_retries):
+        try:
+            headers = {}
+            if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
+                headers["X-API-KEY"] = api_key
 
-    url = "https://api.financialdatasets.ai/financials/search/line-items"
+            url = "https://api.financialdatasets.ai/financials/search/line-items"
 
-    body = {
-        "tickers": [ticker],
-        "line_items": line_items,
-        "end_date": end_date,
-        "period": period,
-        "limit": limit,
-    }
-    response = requests.post(url, headers=headers, json=body)
-    if response.status_code != 200:
-        raise Exception(f"Error fetching data: {response.status_code} - {response.text}")
-    data = response.json()
-    response_model = LineItemResponse(**data)
-    search_results = response_model.search_results
-    if not search_results:
-        return []
-
-    # Cache the results
-    return search_results[:limit]
+            body = {
+                "tickers": [ticker],
+                "line_items": line_items,
+                "end_date": end_date,
+                "period": period,
+                "limit": limit,
+            }
+            response = requests.post(url, headers=headers, json=body)
+            
+            if response.status_code == 429:  # Rate limit hit
+                time.sleep(delay_seconds)  # Wait before retrying
+                continue
+                
+            if response.status_code == 200:
+                data = response.json()
+                response_model = LineItemResponse(**data)
+                search_results = response_model.search_results
+                if not search_results:
+                    return []
+                return search_results[:limit]
+                
+            raise Exception(f"Error fetching data: {response.status_code} - {response.text}")
+            
+        except Exception as e:
+            if attempt == max_retries - 1:  # Last attempt
+                raise e
+            time.sleep(delay_seconds)  # Wait before retrying
+            
+    raise Exception("Max retries exceeded when fetching line items")
 
 
 def get_insider_trades(

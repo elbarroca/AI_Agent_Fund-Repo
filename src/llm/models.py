@@ -2,6 +2,7 @@ import os
 from langchain_anthropic import ChatAnthropic
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from enum import Enum
 from pydantic import BaseModel
 from typing import Tuple
@@ -12,6 +13,7 @@ class ModelProvider(str, Enum):
     OPENAI = "OpenAI"
     GROQ = "Groq"
     ANTHROPIC = "Anthropic"
+    OLLAMA = "Ollama"
 
 
 class LLMModel(BaseModel):
@@ -57,12 +59,12 @@ AVAILABLE_MODELS = [
         provider=ModelProvider.GROQ
     ),
     LLMModel(
-        display_name="[openai] gpt-4o",
+        display_name="[openai] gpt-4o-mini",
         model_name="gpt-4o",
         provider=ModelProvider.OPENAI
     ),
     LLMModel(
-        display_name="[openai] gpt-4o-mini",
+        display_name="[openai] gpt-4o-mini-mini",
         model_name="gpt-4o-mini",
         provider=ModelProvider.OPENAI
     ),
@@ -76,6 +78,42 @@ AVAILABLE_MODELS = [
         model_name="o3-mini",
         provider=ModelProvider.OPENAI
     ),
+    # Add Ollama models
+    LLMModel(
+        display_name="[ollama] llama3",
+        model_name="llama3",
+        provider=ModelProvider.OLLAMA
+    ),
+    LLMModel(
+        display_name="[ollama] mistral",
+        model_name="mistral",
+        provider=ModelProvider.OLLAMA
+    ),
+    LLMModel(
+        display_name="[ollama] llama3:8b",
+        model_name="llama3:8b",
+        provider=ModelProvider.OLLAMA
+    ),
+    LLMModel(
+        display_name="[ollama] llama3:70b",
+        model_name="llama3:70b",
+        provider=ModelProvider.OLLAMA
+    ),
+    LLMModel(
+        display_name="[ollama] phi3:mini",
+        model_name="phi3:mini",
+        provider=ModelProvider.OLLAMA
+    ),
+    LLMModel(
+        display_name="[ollama] deepseek-r1:7b",
+        model_name="deepseek-r1:7b",
+        provider=ModelProvider.OLLAMA
+    ),
+    LLMModel(
+        display_name="[ollama] deepseek-r1:70b",
+        model_name="deepseek-r1:70b",
+        provider=ModelProvider.OLLAMA
+    )
 ]
 
 # Create LLM_ORDER in the format expected by the UI
@@ -85,7 +123,7 @@ def get_model_info(model_name: str) -> LLMModel | None:
     """Get model information by model_name"""
     return next((model for model in AVAILABLE_MODELS if model.model_name == model_name), None)
 
-def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | ChatGroq | None:
+def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | ChatGroq | ChatAnthropic | ChatOllama | None:
     if model_provider == ModelProvider.GROQ:
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
@@ -107,3 +145,9 @@ def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | Ch
             print(f"API Key Error: Please make sure ANTHROPIC_API_KEY is set in your .env file.")
             raise ValueError("Anthropic API key not found.  Please make sure ANTHROPIC_API_KEY is set in your .env file.")
         return ChatAnthropic(model=model_name, api_key=api_key)
+    elif model_provider == ModelProvider.OLLAMA:
+        # Ollama typically runs locally on a specific URL
+        ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        return ChatOllama(model=model_name, base_url=ollama_base_url)
+    else:
+        raise ValueError(f"Unsupported model provider: {model_provider}")

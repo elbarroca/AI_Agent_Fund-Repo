@@ -19,6 +19,7 @@ from utils.display import print_trading_output
 from utils.analysts import ANALYST_ORDER, get_analyst_nodes
 from utils.progress import progress
 from llm.models import LLM_ORDER, get_model_info
+from tools.data_source import DataSource, set_default_data_source
 
 import argparse
 from datetime import datetime
@@ -50,7 +51,7 @@ def run_hedge_fund(
     portfolio: dict,
     show_reasoning: bool = False,
     selected_analysts: list[str] = [],
-    model_name: str = "gpt-4o",
+    model_name: str = "gpt-4o-mini",
     model_provider: str = "OpenAI",
 ):
     # Start progress tracking
@@ -158,8 +159,23 @@ if __name__ == "__main__":
     parser.add_argument(
         "--show-agent-graph", action="store_true", help="Show the agent graph"
     )
+    parser.add_argument(
+        "--data-source",
+        type=str,
+        choices=["api", "yahoo_finance"],
+        default="api",
+        help="Data source to use (api or yahoo_finance). Defaults to api"
+    )
 
     args = parser.parse_args()
+
+    # Set the data source based on the command line argument
+    if args.data_source == "yahoo_finance":
+        set_default_data_source(DataSource.YAHOO_FINANCE)
+        print(f"{Fore.YELLOW}Using Yahoo Finance as the data source{Style.RESET_ALL}")
+    else:
+        set_default_data_source(DataSource.API)
+        print(f"{Fore.YELLOW}Using API as the data source{Style.RESET_ALL}")
 
     # Parse tickers from comma-separated string
     tickers = [ticker.strip() for ticker in args.tickers.split(",")]

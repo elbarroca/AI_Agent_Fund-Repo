@@ -13,12 +13,14 @@ import itertools
 from llm.models import LLM_ORDER, get_model_info
 from utils.analysts import ANALYST_ORDER
 from main import run_hedge_fund
-from tools.api import (
-    get_company_news,
+from tools.data_source import (
+    DataSource,
+    set_default_data_source,
     get_price_data,
     get_prices,
     get_financial_metrics,
     get_insider_trades,
+    get_company_news
 )
 from utils.display import print_backtest_results, format_backtest_row
 from typing_extensions import Callable
@@ -34,7 +36,7 @@ class Backtester:
         start_date: str,
         end_date: str,
         initial_capital: float,
-        model_name: str = "gpt-4o",
+        model_name: str = "gpt-4o-mini",
         model_provider: str = "OpenAI",
         selected_analysts: list[str] = [],
         initial_margin_requirement: float = 0.0,
@@ -649,8 +651,23 @@ if __name__ == "__main__":
         default=0.0,
         help="Margin ratio for short positions, e.g. 0.5 for 50% (default: 0.0)",
     )
+    parser.add_argument(
+        "--data-source",
+        type=str,
+        choices=["api", "yahoo_finance"],
+        default="api",
+        help="Data source to use (api or yahoo_finance). Defaults to api"
+    )
 
     args = parser.parse_args()
+
+    # Set the data source based on the command line argument
+    if args.data_source == "yahoo_finance":
+        set_default_data_source(DataSource.YAHOO_FINANCE)
+        print(f"{Fore.YELLOW}Using Yahoo Finance as the data source{Style.RESET_ALL}")
+    else:
+        set_default_data_source(DataSource.API)
+        print(f"{Fore.YELLOW}Using API as the data source{Style.RESET_ALL}")
 
     # Parse tickers from comma-separated string
     tickers = [ticker.strip() for ticker in args.tickers.split(",")] if args.tickers else []
