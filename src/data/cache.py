@@ -7,6 +7,8 @@ class Cache:
         self._line_items_cache: dict[str, list[dict[str, any]]] = {}
         self._insider_trades_cache: dict[str, list[dict[str, any]]] = {}
         self._company_news_cache: dict[str, list[dict[str, any]]] = {}
+        self._market_cap_cache: dict[str, dict[str, float]] = {}  # ticker -> {date -> market_cap}
+        self._custom_cache: dict[str, any] = {}  # For any other data types not covered above
 
     def _merge_data(self, existing: list[dict] | None, new_data: list[dict], key_field: str) -> list[dict]:
         """Merge existing and new data, avoiding duplicates based on a key field."""
@@ -32,6 +34,10 @@ class Cache:
             data,
             key_field="time"
         )
+
+    def store_prices(self, ticker: str, data: list[dict[str, any]]):
+        """Alias for set_prices to maintain API compatibility."""
+        return self.set_prices(ticker, data)
 
     def get_financial_metrics(self, ticker: str) -> list[dict[str, any]]:
         """Get cached financial metrics if available."""
@@ -80,6 +86,24 @@ class Cache:
             data,
             key_field="date"
         )
+
+    def get_market_cap(self, ticker: str) -> dict[str, float] | None:
+        """Get cached market cap data if available."""
+        return self._market_cap_cache.get(ticker)
+
+    def set_market_cap(self, ticker: str, data: dict[str, float]):
+        """Set market cap data in cache."""
+        if ticker not in self._market_cap_cache:
+            self._market_cap_cache[ticker] = {}
+        self._market_cap_cache[ticker].update(data)
+
+    def get_custom(self, key: str) -> any:
+        """Get custom cached data if available."""
+        return self._custom_cache.get(key)
+
+    def store_custom(self, key: str, data: any):
+        """Store custom data in cache."""
+        self._custom_cache[key] = data
 
 
 # Global cache instance

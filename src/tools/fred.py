@@ -68,7 +68,7 @@ class FredClient:
                 "GFDEBTN": "GFDEBTN",  # Federal Debt: Total Public Debt
                 "DEBT_TO_GDP": "GFDEGDQ188S",  # Federal Debt: Total Public Debt as Percent of GDP
                 "MORTGAGE30US": "MORTGAGE30US",  # 30-Year Fixed Rate Mortgage Average
-                "CSUSHPISA": "CSUSHPISA",  # S&P/Case-Shiller U.S. National Home Price Index
+                "CSUSHPISA": "CSUSHPISA",
                 "MICH": "UMCSENT",  # University of Michigan: Consumer Sentiment
                 "ISM_MAN": "NAPM",  # ISM Manufacturing PMI
                 "ISM_NONMAN": "NMFCI",  # ISM Non-Manufacturing Index
@@ -96,13 +96,27 @@ class FredClient:
                 observation_start = start_date
                 observation_end = end_date
             
+            # Determine appropriate frequency based on the indicator
+            # Quarterly indicators
+            quarterly_indicators = ["GDP", "RGDP", "GDPC1", "DEBT_TO_GDP", "GFDEGDQ188S"]
+            # Annual indicators
+            annual_indicators = ["GFDEBTN"]
+            
+            # Set frequency parameter based on indicator type
+            if any(q_ind in series_id.upper() for q_ind in quarterly_indicators):
+                frequency = "q"  # Quarterly
+            elif any(a_ind in series_id.upper() for a_ind in annual_indicators):
+                frequency = "a"  # Annual
+            else:
+                frequency = "m"  # Monthly (default)
+            
             params = {
                 "api_key": self.api_key,
                 "file_type": "json",
                 "series_id": series_id,
                 "observation_start": observation_start,
                 "observation_end": observation_end,
-                "frequency": "m"  # Monthly data
+                "frequency": frequency
             }
             
             # Make the API request
@@ -110,7 +124,11 @@ class FredClient:
             
             if response.status_code != 200:
                 print(f"FRED API error: {response.status_code} - {response.text}")
-                return {}
+                # Try without frequency parameter as a fallback
+                params.pop("frequency", None)
+                response = requests.get(f"{self.base_url}/series/observations", params=params)
+                if response.status_code != 200:
+                    return {}
                 
             data = response.json()
             
@@ -169,13 +187,13 @@ class FredClient:
                 result["data"] = yoy_data
             
             # Cache the result
-            _cache.set_custom(cache_key, result)
+            _cache.store_custom(cache_key, result)
             
             return result
             
         except Exception as e:
-            print(f"FRED error getting economic data for {indicator}: {str(e)}")
-            return {}
+            print(f"Error fetching economic data from FRED: {e}")
+            return {"indicator": indicator, "data": []}
     
     def get_series_info(self, series_id: str) -> Dict[str, Any]:
         """

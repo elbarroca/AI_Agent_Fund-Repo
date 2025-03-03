@@ -162,9 +162,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data-source",
         type=str,
-        choices=["api", "yahoo_finance"],
+        choices=["api", "yahoo_finance", "waterfall"],
         default="api",
-        help="Data source to use (api or yahoo_finance). Defaults to api"
+        help="Data source to use (api, yahoo_finance, or waterfall). Defaults to api"
     )
 
     args = parser.parse_args()
@@ -173,6 +173,9 @@ if __name__ == "__main__":
     if args.data_source == "yahoo_finance":
         set_default_data_source(DataSource.YAHOO_FINANCE)
         print(f"{Fore.YELLOW}Using Yahoo Finance as the data source{Style.RESET_ALL}")
+    elif args.data_source == "waterfall":
+        set_default_data_source(DataSource.WATERFALL)
+        print(f"{Fore.YELLOW}Using Waterfall method as the data source (tries multiple sources){Style.RESET_ALL}")
     else:
         set_default_data_source(DataSource.API)
         print(f"{Fore.YELLOW}Using API as the data source{Style.RESET_ALL}")
